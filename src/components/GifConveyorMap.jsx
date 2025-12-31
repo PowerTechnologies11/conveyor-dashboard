@@ -1,33 +1,34 @@
 // src/components/GifConveyorMap.jsx 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Popover, Card, Tag, Typography, Button, Space, theme } from 'antd';
 import { FireOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { rollerList, getRollerHealth } from '../data/dummyData';
 
 const { Text } = Typography;
 
-// 您的 20 个坐标点
+// 注意：如果图片比例改变，可能需要微调一下这里的坐标
+// 但改用 img 标签后，这就兼容所有屏幕尺寸了
 const ROLLER_POSITIONS_MAP = {
     '100001': { top: '68%', left: '17.5%' }, 
     '100002': { top: '65%', left: '23.5%' }, 
     '100003': { top: '62.5%', left: '29%' }, 
     '100004': { top: '59%', left: '35.5%' }, 
-    '100005': { top: '53%', left: '47.5%' },
-    '100006': { top: '50%', left: '54%' },
-    '100007': { top: '47%', left: '60%' },
-    '100008': { top: '44%', left: '65.5%' },
-    '100009': { top: '41%', left: '71%' },
-    '100010': { top: '38%', left: '76%' },
-    '100011': { top: '56%', left: '42%' }, 
-    '100012': { top: '31.5%', left: '78%' }, 
-    '100013': { top: '72%', left: '14%' },
-    '100014': { top: '66%', left: '27%' },
-    '100015': { top: '59%', left: '39%' },
-    '100016': { top: '54%', left: '51.5%' },
-    '100017': { top: '48%', left: '64%' },
-    '100018': { top: '43%', left: '73%' },
-    '100019': { top: '40%', left: '79%' },
-    '100020': { top: '36.5%', left: '83%' }, 
+    '100005': { top: '52%', left: '47.5%' },
+    '100006': { top: '49%', left: '54%' },
+    '100007': { top: '46%', left: '60%' },
+    '100008': { top: '42.5%', left: '65.5%' },
+    '100009': { top: '39.5%', left: '71%' },
+    '100010': { top: '36.5%', left: '76%' },
+    '100011': { top: '55.5%', left: '41.5%' }, 
+    '100012': { top: '29%', left: '78%' }, 
+    '100013': { top: '75%', left: '14.5%' },
+    '100014': { top: '67.5%', left: '27%' },
+    '100015': { top: '60.5%', left: '39%' },
+    '100016': { top: '54%', left: '51%' },
+    '100017': { top: '47%', left: '63.5%' },
+    '100018': { top: '41.5%', left: '73.5%' },
+    '100019': { top: '38.5%', left: '79%' },
+    '100020': { top: '35%', left: '83%' }, 
 };
 
 const mapHealthStatus = (status) => {
@@ -37,9 +38,9 @@ const mapHealthStatus = (status) => {
 };
 
 const GifConveyorMap = ({ handleNavigate }) => { 
-    const { token: { colorBgContainer, colorPrimary } } = theme.useToken();
+    const { token: { colorPrimary } } = theme.useToken();
     
-    // 映射数据
+    // 安全映射数据
     const rollersData = rollerList.map(r => ({ 
         ...r, 
         health: getRollerHealth(r), 
@@ -61,7 +62,7 @@ const GifConveyorMap = ({ handleNavigate }) => {
                 <Text><FireOutlined /> Temp: {isOffline ? '-' : `${roller.temp}°C`}</Text>
                 
                 {isVib ? (
-                     <Text><ThunderboltOutlined /> Volt: {roller.voltage}V</Text>
+                     <Text><ThunderboltOutlined /> Volt: {isOffline || !roller.voltage ? '-' : roller.voltage + 'V'}</Text>
                 ) : (
                      <Text><ReloadOutlined /> RPM: {isOffline ? '-' : roller.rpm}</Text>
                 )}
@@ -91,7 +92,11 @@ const GifConveyorMap = ({ handleNavigate }) => {
             >
                 <div
                     style={{
-                        position: 'absolute',
+                        position: 'absolute', // 绝对定位，相对于父容器(Map Wrapper)
+                        // 使用百分比定位，这将永远相对于图片的尺寸
+                        top: roller.positionStyle.top, 
+                        left: roller.positionStyle.left,
+                        
                         width: 16, 
                         height: 16,
                         borderRadius: '50%',
@@ -100,10 +105,14 @@ const GifConveyorMap = ({ handleNavigate }) => {
                         boxShadow: `0 0 8px ${roller.health.color}`, 
                         cursor: 'pointer',
                         zIndex: 10, 
-                        top: roller.positionStyle.top, 
-                        left: roller.positionStyle.left,
+                        
+                        // 关键：确保定位点是圆心的正中心，而不是左上角
                         transform: 'translate(-50%, -50%)', 
+                        transition: 'all 0.3s ease', // 加一点动画让变化更平滑
                     }}
+                    // 鼠标悬停变大一点
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
                 />
             </Popover>
         );
@@ -111,19 +120,34 @@ const GifConveyorMap = ({ handleNavigate }) => {
 
     return (
         <Card title="Real-time Status Map" style={{ border: 'none' }}>
+            {/* 关键修改：
+               1. 外层容器设为 relative，作为定位基准。
+               2. 移除固定的 height: 550px，让高度由图片自动撑开 (height: auto)。
+               3. 移除 background-image，改用 <img /> 标签。
+            */}
             <div 
                 style={{ 
                     position: 'relative', 
                     width: '100%', 
-                    height: 550, 
-                    backgroundImage: `url('/conveyor.gif')`, 
-                    backgroundSize: 'contain', 
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center', 
-                    backgroundColor: colorBgContainer, 
+                    // 高度自动，随宽度等比缩放
+                    height: 'auto', 
                     borderRadius: 8,
+                    overflow: 'hidden', // 防止圆点溢出
+                    backgroundColor: '#f0f2f5'
                 }}
             >
+                {/* 使用 img 标签作为地图底图 */}
+                <img 
+                    src="/conveyor.gif" 
+                    alt="Conveyor Map" 
+                    style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block', // 消除图片底部的微小间隙
+                    }} 
+                />
+
+                {/* 渲染覆盖层圆点 */}
                 {rollersData.map(roller => renderIndicator(roller))}
             </div>
             
