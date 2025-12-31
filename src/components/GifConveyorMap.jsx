@@ -1,12 +1,12 @@
 // src/components/GifConveyorMap.jsx 
-
 import React from 'react';
 import { Popover, Card, Tag, Typography, Button, Space, theme } from 'antd';
-import { FireOutlined, ReloadOutlined } from '@ant-design/icons';
+import { FireOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { rollerList, getRollerHealth } from '../data/dummyData';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
+// 您的 20 个坐标点
 const ROLLER_POSITIONS_MAP = {
     '100001': { top: '68%', left: '17.5%' }, 
     '100002': { top: '65%', left: '23.5%' }, 
@@ -20,7 +20,6 @@ const ROLLER_POSITIONS_MAP = {
     '100010': { top: '38%', left: '76%' },
     '100011': { top: '56%', left: '42%' }, 
     '100012': { top: '31.5%', left: '78%' }, 
-
     '100013': { top: '72%', left: '14%' },
     '100014': { top: '66%', left: '27%' },
     '100015': { top: '59%', left: '39%' },
@@ -37,10 +36,10 @@ const mapHealthStatus = (status) => {
     return status; 
 };
 
-
 const GifConveyorMap = ({ handleNavigate }) => { 
-    const { token: { colorPrimary, colorBgContainer } } = theme.useToken();
+    const { token: { colorBgContainer, colorPrimary } } = theme.useToken();
     
+    // 映射数据
     const rollersData = rollerList.map(r => ({ 
         ...r, 
         health: getRollerHealth(r), 
@@ -49,26 +48,32 @@ const GifConveyorMap = ({ handleNavigate }) => {
 
     const renderPopoverContent = (roller) => {
         const isOffline = roller.health.status === 'OFFLINE';
-        
+        const isVib = roller.type === 'VIBRATION';
+
         return (
-            <Space direction="vertical" size={5}>
-                <Text strong style={{ color: colorPrimary }}>Roller: {roller.rollerName} (Sensor: {roller.sensorId})</Text>
-                <Tag color={roller.health.color}>{mapHealthStatus(roller.health.status)}</Tag>
-                <Text>Conveyor: {roller.conveyor}</Text>
+            <Space direction="vertical" size={5} style={{ minWidth: 200 }}>
+                <Text strong style={{ color: colorPrimary }}>{roller.rollerName}</Text>
+                <Space>
+                    <Tag color={roller.health.color}>{mapHealthStatus(roller.health.status)}</Tag>
+                    <Tag>{isVib ? 'Vib' : 'RPM'}</Tag>
+                </Space>
                 
                 <Text><FireOutlined /> Temp: {isOffline ? '-' : `${roller.temp}°C`}</Text>
-                <Text><ReloadOutlined /> RPM: {isOffline ? '-' : roller.rpm}</Text>
                 
-                <Text type="secondary">Runtime: {roller.runtimeDays} Days</Text>
-                <Text type="danger">{isOffline ? 'Data unavailable.' : (roller.health.alertType.join(', ') || 'No specific alerts.')}</Text>
+                {isVib ? (
+                     <Text><ThunderboltOutlined /> Volt: {roller.voltage}V</Text>
+                ) : (
+                     <Text><ReloadOutlined /> RPM: {isOffline ? '-' : roller.rpm}</Text>
+                )}
                 
                 <Button 
                     size="small" 
                     type="primary" 
                     disabled={isOffline}
+                    style={{ marginTop: 8 }}
                     onClick={() => handleNavigate(roller)} 
                 >
-                    Go to Details
+                    Details
                 </Button>
             </Space>
         );
@@ -79,11 +84,10 @@ const GifConveyorMap = ({ handleNavigate }) => {
 
         return (
             <Popover
-                key={`indicator-${roller.sensorId}`}
+                key={roller.sensorId}
                 content={renderPopoverContent(roller)}
-                title={`Sensor Status: ${mapHealthStatus(roller.health.status)}`}
+                title="Sensor Status"
                 trigger="click"
-                placement="right"
             >
                 <div
                     style={{
@@ -93,16 +97,13 @@ const GifConveyorMap = ({ handleNavigate }) => {
                         borderRadius: '50%',
                         backgroundColor: roller.health.color, 
                         border: '3px solid #fff', 
-                        boxShadow: `0 0 12px ${roller.health.color}, inset 0 0 5px rgba(0,0,0,0.3)`, 
+                        boxShadow: `0 0 8px ${roller.health.color}`, 
                         cursor: 'pointer',
-                        transition: 'all 0.3s',
                         zIndex: 10, 
-                        
                         top: roller.positionStyle.top, 
                         left: roller.positionStyle.left,
                         transform: 'translate(-50%, -50%)', 
                     }}
-                    title={`Roller ${roller.rollerName} (${mapHealthStatus(roller.health.status)})`}
                 />
             </Popover>
         );
@@ -118,24 +119,21 @@ const GifConveyorMap = ({ handleNavigate }) => {
                     backgroundImage: `url('/conveyor.gif')`, 
                     backgroundSize: 'contain', 
                     backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center 50%', 
+                    backgroundPosition: 'center', 
                     backgroundColor: colorBgContainer, 
                     borderRadius: 8,
-                    overflow: 'hidden'
                 }}
             >
                 {rollersData.map(roller => renderIndicator(roller))}
-                
-                <Button style={{ position: 'absolute', top: 10, right: 10, zIndex: 20 }} type="text">
-                    <Text strong>Main Site</Text>
-                </Button>
             </div>
             
             <div style={{ marginTop: 10, textAlign: 'center' }}>
-                <Tag color="green">{mapHealthStatus('Normal')}</Tag>
-                <Tag color="orange">{mapHealthStatus('WARNING')}</Tag>
-                <Tag color="red">{mapHealthStatus('DANGER')}</Tag>
-                <Tag color="gray">Offline</Tag>
+                <Space>
+                    <Tag color="#52c41a">Normal</Tag>
+                    <Tag color="#faad14">Warning</Tag>
+                    <Tag color="#f5222d">Alarm</Tag>
+                    <Tag color="#bfbfbf">Offline</Tag>
+                </Space>
             </div>
         </Card>
     );

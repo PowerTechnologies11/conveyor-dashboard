@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useState } from 'react';
-import LoginPage from './components/LoginPage';           // 确保导入路径正确
-import DashboardLayout from './components/DashboardLayout'; // 确保导入路径正确
+import LoginPage from './components/LoginPage';           
+import DashboardLayout from './components/DashboardLayout'; 
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false); 
@@ -14,11 +14,15 @@ function App() {
         setIsLoggedIn(false);
     };
 
-    if (!isLoggedIn) {
-        return <LoginPage onLoginSuccess={handleLoginSuccess} />;
-    }
-
-    return <DashboardLayout onLogout={handleLogout} />;
+    return (
+        <div className="App">
+            {!isLoggedIn ? (
+                <LoginPage onLoginSuccess={handleLoginSuccess} />
+            ) : (
+                <DashboardLayout onLogout={handleLogout} />
+            )}
+        </div>
+    );
 }
 
 export default App;

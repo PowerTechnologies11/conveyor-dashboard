@@ -23,15 +23,15 @@ const RpmGauge = ({ rpm, isOffline }) => {
                 justifyContent: 'center',
                 border: 'none',
             }}>
-                <Title level={4} style={{ color: 'white', margin: 0, opacity: 0.8 }}>RPM Monitoring</Title>
+                <Title level={4} style={{ color: 'white', margin: 0 }}>RPM Status</Title>
                 <Title level={1} style={{ color: 'white', margin: '10px 0 0 0' }}>---</Title>
                 <p>OFFLINE</p>
             </Card>
         );
     }
     
-    const MIN_RPM = 200;
-    const MAX_RPM = 600;
+    const MIN_RPM = 800;
+    const MAX_RPM = 2500;
     const currentRpm = rpm || 0; 
     const normalizedRpm = Math.min(Math.max(currentRpm, MIN_RPM), MAX_RPM);
     const chartValue = (normalizedRpm - MIN_RPM) / (MAX_RPM - MIN_RPM);
@@ -45,15 +45,15 @@ const RpmGauge = ({ rpm, isOffline }) => {
             border: 'none',
             overflow: 'hidden'
         }}
-        bodyStyle={{ padding: 0 }}
-        >
-            <Title level={4} style={{ color: 'white', margin: 0, padding: '10px 0', textAlign: 'center', backgroundColor: colorInfo }}>RPM Monitoring</Title>
+
+>
+            <Title level={4} style={{ color: 'white', margin: 0, padding: '10px 0', textAlign: 'center', backgroundColor: colorInfo }}>RPM Status</Title>
             <div style={{ position: 'relative', padding: '10px 0 0 0' }}>
                 <GaugeChart
                     id="rpm-gauge"
                     nrOfLevels={3} 
-                    arcsLength={[0.4, 0.3, 0.3]} 
-                    colors={[colorSuccess, colorWarning, colorError]}
+                    arcsLength={[0.25, 0.5, 0.25]} 
+                    colors={[colorWarning, colorSuccess, colorError]}
                     percent={chartValue}
                     arcPadding={0.02}
                     cornerRadius={3}
@@ -71,7 +71,7 @@ const TempThermometer = ({ temp, isOffline }) => {
     const { token: { colorError, colorWarning, colorInfo } } = theme.useToken();
     
     const MAX_TEMP = 100;
-    const MIN_TEMP = 30;
+    const MIN_TEMP = 0;
     const currentTemp = temp || MIN_TEMP;
 
     const normalizedTemp = isOffline ? MIN_TEMP : Math.min(Math.max(currentTemp, MIN_TEMP), MAX_TEMP);
@@ -92,7 +92,7 @@ const TempThermometer = ({ temp, isOffline }) => {
                 alignItems: 'center'
             }}
         >
-             <Title level={4} style={{ color: 'white', margin: 0, opacity: 0.8 }}>Temperature Monitoring</Title>
+             <Title level={4} style={{ color: 'white', margin: 0 }}>Temperature Status</Title>
              <Title level={1} style={{ color: 'white', margin: '15px 0 10px 0' }}>
                 {isOffline ? '---' : `${currentTemp}°C`}
             </Title>
@@ -103,7 +103,7 @@ const TempThermometer = ({ temp, isOffline }) => {
                 backgroundColor: 'rgba(255, 255, 255, 0.3)', 
                 borderRadius: 15,
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
             }}>
                 <div style={{
                     width: '100%',
@@ -115,7 +115,7 @@ const TempThermometer = ({ temp, isOffline }) => {
                 }}/>
             </div>
 
-            <Text style={{ color: 'white', marginTop: 10 }}>{isOffline ? 'OFFLINE' : `Range: ${MIN_TEMP}-${MAX_TEMP}°C`}</Text>
+            <Text style={{ color: 'white', marginTop: 10 }}></Text>
         </Card>
     );
 }

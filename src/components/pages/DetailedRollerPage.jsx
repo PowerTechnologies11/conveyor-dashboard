@@ -1,159 +1,244 @@
-// src/components/pages/DetailedRollerPage.jsx 
+// src/components/pages/DetailedRollerPage.jsx
 
 import React, { useState, useMemo } from 'react';
-import { Card, Row, Col, Typography, Space, theme, Button } from 'antd';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { detailedRollerInfo, historicalDataFull, generateHistoricalData, getRollerHealth, HEALTH_THRESHOLDS } from '../../data/dummyData';
-import { ScheduleOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Space, theme, Button, Tag, Modal, Divider, Statistic, Empty, Segmented } from 'antd';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { detailedRollerInfo, getRollerHealth } from '../../data/dummyData';
+import { 
+    WifiOutlined, ThunderboltOutlined, FireOutlined, DashboardOutlined, 
+    ColumnHeightOutlined, CompressOutlined, ArrowsAltOutlined, LineChartOutlined, AreaChartOutlined
+} from '@ant-design/icons';
 import { RpmGauge, TempThermometer } from '../GaugeDisplay'; 
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
-const mapHealthStatus = (status) => {
-    if (status === 'DANGER') return 'Alarm';
-    if (status === 'WARNING') return 'Pre-alarm';
-    return status; 
+// 安全取值：如果是对象取 current，否则返回数值或0
+const safelyGetValue = (val) => {
+    if (val === undefined || val === null) return 0;
+    if (typeof val === 'object' && val.current !== undefined) return val.current;
+    if (typeof val === 'number') return val;
+    return 0;
 };
 
+// --- 组件：带图表按钮的单项指标 ---
+const MetricItem = ({ icon, title, dataObj, unit, color, onGraphClick }) => {
+    const { token } = theme.useToken();
+    const primaryColor = color || token.colorPrimary;
+    const value = safelyGetValue(dataObj);
 
-const DetailedRollerPage = ({ selectedRoller }) => {
-    const { PRE_ALARM_TEMP, ALARM_TEMP, PRE_ALARM_RPM_LOW, ALARM_RPM_HIGH } = HEALTH_THRESHOLDS;
-
-    const { token: { colorError, colorPrimary, colorInfo, colorWarning } } = theme.useToken();
-    const [timePeriod, setTimePeriod] = useState('30Days'); 
-
-    const historicalDataFiltered = useMemo(() => {
-        if (timePeriod === 'AllTime') return generateHistoricalData(90);
-        if (timePeriod === '7Days') return generateHistoricalData(7);
-        if (timePeriod === '24H') return generateHistoricalData(1); 
-        return historicalDataFull;
-    }, [timePeriod]);
-
-    const currentHealth = selectedRoller ? getRollerHealth(selectedRoller) : { status: 'NORMAL', color: 'green', alertType: [] };
-    const isOffline = currentHealth.status === 'OFFLINE';
-
-    const renderInfoCard = (title, value) => (
-        <Row style={{ borderBottom: '1px solid #f0f0f0', padding: '8px 0' }}>
-            <Col span={10} style={{ fontWeight: 500 }}>{title}</Col>
-            <Col span={14}>{value}</Col>
-        </Row>
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ 
+                    fontSize: 24, color: primaryColor, backgroundColor: `${primaryColor}20`,
+                    padding: 12, borderRadius: 12, marginRight: 16
+                }}>
+                    {icon}
+                </div>
+                <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{title}</Text>
+                    <div style={{ fontSize: 20, fontWeight: 'bold', lineHeight: 1.2 }}>
+                        {value} <span style={{ fontSize: 14, fontWeight: 'normal' }}>{unit}</span>
+                    </div>
+                </div>
+            </div>
+            {/* 只有当数据包含 history 时才显示按钮 */}
+            {dataObj && dataObj.history && (
+                <Button 
+                    type="text" 
+                    icon={<LineChartOutlined style={{ fontSize: 18, color: token.colorTextSecondary }} />} 
+                    onClick={() => onGraphClick(title, dataObj, primaryColor)}
+                />
+            )}
+        </div>
     );
+};
 
-    const renderCurrentDataMetric = (title, value) => (
-        <Row style={{ borderBottom: '1px solid #f0f0f0', padding: '8px 0' }}>
-            <Col span={12} style={{ fontWeight: 500 }}>{title}</Col>
-            <Col span={12} style={{ textAlign: 'right' }}>
-                {value === null || value === undefined || value === '-' ? '-' : value}
-            </Col>
-        </Row>
-    );
-    
-    const info = selectedRoller ? { ...detailedRollerInfo.location, ...selectedRoller } : detailedRollerInfo.location;
-    const tempValue = selectedRoller?.temp;
-    const rpmValue = selectedRoller?.rpm;
+// --- 组件：带图表按钮的振动轴卡片 ---
+const AxisCard = ({ axisLabel, data, accentColor, onGraphClick }) => {
+    const { token } = theme.useToken();
+    const safeData = data || {}; 
 
-    const XAxisContent = () => (
-        <XAxis 
-            dataKey="name" 
-            angle={timePeriod === '24H' ? -45 : 0} 
-            textAnchor={timePeriod === '24H' ? 'end' : 'middle'}
-            interval={timePeriod === '24H' ? 2 : 0} 
-        />
+    // 内部小组件：显示数值 + 图表小按钮
+    const renderStat = (title, dataObj, unit, icon) => (
+        <div style={{ position: 'relative' }}>
+            <Statistic 
+                title={title} 
+                value={safelyGetValue(dataObj)} 
+                precision={2} 
+                suffix={<span style={{fontSize: 12}}>{unit}</span>}
+                valueStyle={{ fontSize: 20, fontWeight: 'bold' }}
+                prefix={icon}
+            />
+            {dataObj && dataObj.history && (
+                <div style={{ position: 'absolute', top: 0, right: 0 }}>
+                     <Button 
+                        size="small" type="text" icon={<LineChartOutlined />} 
+                        onClick={() => onGraphClick(`${axisLabel}-Axis ${title}`, dataObj, accentColor)}
+                    />
+                </div>
+            )}
+        </div>
     );
 
     return (
-        <Space direction="vertical" size="large" style={{ display: 'flex' }}>
-            <Title level={3}>Detailed Roller Information (Roller {info.rollerName || 'Default'})</Title>
-            
-            <Row gutter={[16, 16]}>
-                <Col span={8} xs={24} md={8}>
-                    <TempThermometer temp={tempValue} isOffline={isOffline} />
-                </Col>
-
-                <Col span={8} xs={24} md={8}>
-                    <RpmGauge rpm={rpmValue} isOffline={isOffline} />
-                </Col>
-
-                <Col span={8} xs={24} md={8}>
-                    <Card style={{ backgroundColor: currentHealth.color, color: 'white', minHeight: 280, textAlign: 'center', border: 'none', 
-                                    display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <Title level={1} style={{ color: 'white', margin: '0 0 8px 0' }}>{mapHealthStatus(currentHealth.status)}</Title>
-                        <p style={{ color: 'white', opacity: 0.8 }}>Health Status</p>
-                        <hr style={{ borderColor: 'rgba(255,255,255,0.3)', margin: '15px 0' }} />
-                        <Title level={5} style={{ color: 'white', margin: 0 }}>Alerts: {currentHealth.alertType.join(', ') || 'None'}</Title>
-                    </Card>
-                </Col>
+        <Card bordered={false} style={{ height: '100%', borderTop: `4px solid ${accentColor}` }} bodyStyle={{ padding: '16px 24px' }}>
+             <Title level={5} style={{ marginBottom: 16, color: accentColor }}>
+                <ArrowsAltOutlined /> {axisLabel}-Axis Vibration
+            </Title>
+            <Row gutter={24}>
+                <Col span={8}>{renderStat("Velocity", safeData.velocity, "mm/s", <DashboardOutlined style={{ color: token.colorInfo, opacity: 0.6 }} />)}</Col>
+                <Col span={8}>{renderStat("Displacement", safeData.displacement, "um", <ColumnHeightOutlined style={{ color: token.colorWarning, opacity: 0.6 }} />)}</Col>
+                <Col span={8}>{renderStat("Acceleration", safeData.acceleration, "m/s²", <CompressOutlined style={{ color: token.colorSuccess, opacity: 0.6 }} />)}</Col>
             </Row>
+        </Card>
+    );
+};
 
-            <Card style={{ marginTop: 16 }}>
-                <Row gutter={[32, 16]}>
-                    <Col span={12} xs={24} md={12}>
-                        <Title level={4}>Asset Information (PTSPS120)</Title>
-                        {renderInfoCard('Site', info.site)}
-                        {renderInfoCard('Conveyor', info.conveyor)}
-                        {renderInfoCard('Roller Name', info.rollerName)}
-                        {renderInfoCard('Sensor ID', info.sensorId)}
-                        {renderInfoCard('Runtime', `${info.runtimeDays || '-'} Days`)}
-                        {renderInfoCard('Business', info.business)}
-                    </Col>
-                    <Col span={12} xs={24} md={12}>
-                        <Title level={4}>Current Data & Thresholds</Title>
-                        {renderCurrentDataMetric('Current Temp', tempValue === null ? null : `${tempValue}°C`)}
-                        {renderCurrentDataMetric('Current RPM', rpmValue)}
-                        
-                        {renderCurrentDataMetric('Temp Threshold', `Pre-Alarm: > ${PRE_ALARM_TEMP}°C | ALARM: > ${ALARM_TEMP}°C`)}
-                        {renderCurrentDataMetric('RPM Threshold', `ALARM High: > ${ALARM_RPM_HIGH} | Pre-Alarm Low: < ${PRE_ALARM_RPM_LOW}`)}
-                    </Col>
-                </Row>
+const DetailedRollerPage = ({ selectedRoller }) => {
+    const { token } = theme.useToken();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalConfig, setModalConfig] = useState({ title: '', fullHistory: [], color: token.colorPrimary });
+    const [timeRange, setTimeRange] = useState('24H');
+
+    // 数据源获取
+    const roller = selectedRoller || detailedRollerInfo;
+    if (!roller || !roller.sensorId) return <Empty description="No Sensor Selected" style={{ marginTop: 50 }} />;
+
+    const isVibrationSensor = roller.type === 'VIBRATION';
+    const health = getRollerHealth(roller);
+    const isOffline = health.status === 'OFFLINE';
+
+    // --- 图表打开逻辑 ---
+    const handleOpenGraph = (title, dataObj, color) => {
+        if (!dataObj || !dataObj.history) return;
+        setModalConfig({ title, fullHistory: dataObj.history, color: color || token.colorPrimary });
+        setTimeRange('24H');
+        setIsModalOpen(true);
+    };
+
+    // --- 图表数据筛选逻辑 ---
+    const chartData = useMemo(() => {
+        const full = modalConfig.fullHistory || [];
+        switch (timeRange) {
+            case '24H': return full.slice(-24);
+            case '1 Week': return full.slice(-168); // 7 * 24
+            case '1 Month': return full; 
+            case 'All Time': return full; 
+            default: return full.slice(-24);
+        }
+    }, [modalConfig, timeRange]);
+
+    const SensorTypeTag = () => isVibrationSensor ? 
+        <Tag color="geekblue" icon={<WifiOutlined />}>PTSPS104 (Vibration)</Tag> : 
+        <Tag color="orange" icon={<ThunderboltOutlined />}>PTSPS120 (RPM)</Tag>;
+
+    return (
+        <Space direction="vertical" size="large" style={{ display: 'flex', paddingBottom: 20 }}>
+            {/* Header */}
+            <Card bordered={false} bodyStyle={{ padding: '16px 24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Space direction="vertical" size={0}>
+                         <Title level={3} style={{ margin: 0 }}>{roller.rollerName || 'Device Detail'}</Title>
+                        <Text type="secondary">Sensor ID: <Text code>{roller.sensorId}</Text></Text>
+                    </Space>
+                    <Tag color={health.color} style={{ fontSize: 14, padding: '4px 10px', fontWeight: 'bold' }}>{health.status}</Tag>
+                </div>
+                <Divider style={{ margin: '12px 0' }} />
+                <Space wrap>
+                    <Tag color="blue">Site: {roller.site}</Tag>
+                    <Tag color="cyan">Conveyor: {roller.conveyor}</Tag>
+                    <SensorTypeTag />
+                    {isOffline && <Tag color="default">Main Power: OFF</Tag>}
+                </Space>
             </Card>
 
-            {!isOffline ? (
-                <React.Fragment>
-                    <Title level={4} style={{ marginTop: 24 }}>Trend Analysis & Prediction</Title>
-                    
-                    <Row justify="end" style={{ marginBottom: 8 }}>
-                        {['24H', '7Days', '30Days', 'AllTime'].map(period => (
-                            <Button 
-                                key={period}
-                                type={timePeriod === period ? 'primary' : 'default'}
-                                onClick={() => setTimePeriod(period)}
-                                style={{ marginLeft: 8 }}
-                            >
-                                {period}
-                            </Button>
-                        ))}
-                    </Row>
-                    
-                    <Card title="Temperature Over Time (For Prediction)" style={{ height: 350, overflowX: 'auto' }}>
-                        <LineChart width={900} height={300} data={historicalDataFiltered}> 
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxisContent />
-                            <YAxis domain={[30, 90]} label={{ value: 'Temp (°C)', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend wrapperStyle={{ paddingTop: '10px' }} />
-                            <Line type="monotone" dataKey="temperature" stroke={colorPrimary} strokeWidth={3} dot={false} name="Temperature Trend" />
-                            <Line type="monotone" dataKey={() => ALARM_TEMP} stroke={colorError} strokeDasharray="3 3" dot={false} name={`ALARM Threshold (${ALARM_TEMP}°C)`} /> 
-                            <Line type="monotone" dataKey={() => PRE_ALARM_TEMP} stroke={colorWarning} strokeDasharray="3 3" dot={false} name={`Pre-ALARM Threshold (${PRE_ALARM_TEMP}°C)`} /> 
-                        </LineChart>
-                    </Card>
-
-                    <Card title="RPM Stability Trend (Detection of Slip/Seize)" style={{ height: 350, marginTop: 16, overflowX: 'auto' }}>
-                        <LineChart width={900} height={300} data={historicalDataFiltered}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxisContent />
-                            <YAxis domain={[250, 500]} label={{ value: 'RPM', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="rpm_stability" stroke={colorInfo} strokeWidth={3} dot={false} name="RPM Fluctuation" />
-                        </LineChart>
-                    </Card>
-                </React.Fragment>
+            {/* Content Logic */}
+            {isVibrationSensor ? (
+                <Row gutter={[20, 20]}>
+                    <Col xs={24} lg={8}>
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                            <Card title="Environment" bordered={false}>
+                                <MetricItem 
+                                    icon={<FireOutlined />} title="Temperature" unit="°C" color={token.colorError}
+                                    dataObj={roller.tempObj} onGraphClick={handleOpenGraph}
+                                />
+                                <Divider style={{ margin: '8px 0' }} />
+                                <MetricItem 
+                                    icon={<ThunderboltOutlined />} title="Voltage" unit="V" color={token.colorSuccess}
+                                    dataObj={roller.voltageObj} onGraphClick={handleOpenGraph}
+                                />
+                            </Card>
+                        </Space>
+                    </Col>
+                    <Col xs={24} lg={16}>
+                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                            <AxisCard axisLabel="X" data={roller.vibration?.x} accentColor="#FF6B6B" onGraphClick={handleOpenGraph} />
+                            <AxisCard axisLabel="Y" data={roller.vibration?.y} accentColor="#51CF66" onGraphClick={handleOpenGraph} />
+                            <AxisCard axisLabel="Z" data={roller.vibration?.z} accentColor="#339AF0" onGraphClick={handleOpenGraph} />
+                        </Space>
+                    </Col>
+                </Row>
             ) : (
-                 <Card style={{ marginTop: 24, padding: 50, textAlign: 'center' }}>
-                     <Title level={4} type="secondary">Sensor is Offline</Title>
-                     <p>Historical trend data is unavailable while the sensor is disconnected.</p>
-                 </Card>
+                <Row gutter={[20, 20]}>
+                    <Col span={8}>
+                        <Card title="RPM Speed" extra={<Button type="text" icon={<LineChartOutlined />} onClick={() => handleOpenGraph('RPM Trend', roller.rpmObj, token.colorWarning)} />}>
+                            <RpmGauge rpm={safelyGetValue(roller.rpmObj)} isOffline={isOffline} />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card title="Temperature" extra={<Button type="text" icon={<LineChartOutlined />} onClick={() => handleOpenGraph('Temp Trend', roller.tempObj, token.colorError)} />}>
+                             <TempThermometer temp={safelyGetValue(roller.tempObj)} isOffline={isOffline} />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card title="Info" bordered={false} style={{ height: '100%' }}>
+                             <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                                <ThunderboltOutlined style={{ fontSize: 56, color: token.colorWarning, marginBottom: 24 }} />
+                                <Title level={4}>Self-Powered</Title>
+                                <Text type="secondary">Energy Harvesting</Text>
+                             </div>
+                        </Card>
+                    </Col>
+                </Row>
             )}
-            
+
+            {/* Modal */}
+            <Modal
+                title={<Space><AreaChartOutlined style={{ color: modalConfig.color }} /> {modalConfig.title} History</Space>}
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+                footer={null}
+                width={900}
+                centered
+                destroyOnClose
+            >
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <Segmented 
+                        options={['24H', '1 Week', '1 Month', 'All Time']} 
+                        value={timeRange}
+                        onChange={setTimeRange}
+                        size="large"
+                    />
+                </div>
+                <div style={{ height: 400, width: '100%' }}>
+                    <ResponsiveContainer>
+                        <AreaChart data={chartData}>
+                            <defs>
+                                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={modalConfig.color} stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor={modalConfig.color} stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="label" minTickGap={30} tick={{ fontSize: 12 }} />
+                            <YAxis domain={['auto', 'auto']} />
+                            <Tooltip contentStyle={{ borderRadius: 8 }} />
+                            <Area type="monotone" dataKey="value" stroke={modalConfig.color} fillOpacity={1} fill="url(#colorVal)" strokeWidth={2} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </Modal>
         </Space>
     );
 };

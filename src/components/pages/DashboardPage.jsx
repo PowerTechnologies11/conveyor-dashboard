@@ -50,13 +50,13 @@ const DashboardPage = ({ setActiveKey, setSelectedRoller }) => {
 
     return (
         <Space direction="vertical" size="large" style={{ display: 'flex' }}>
-            <Title level={3}>Home & KPIs - System Overview</Title>
+            <Title level={3}>Home </Title>
             
             <Title level={4}>Site Health Summary</Title>
             
             <Row gutter={[16, 16]}>
                 {renderKpiCard(
-                    'Total Alarmed', 
+                    'Total Alarm', 
                     currentKPIs.totalDangerAlerts, 
                     'Sensors', 
                     <FireOutlined />, 

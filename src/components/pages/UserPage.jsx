@@ -11,7 +11,6 @@ const userData = {
     username: 'Administrator',
     email: 'admin@powertechnologies.com',
     role: 'System Admin',
-    lastLogin: '2025-12-04 10:00 AM'
 };
 
 const UserPage = () => {
@@ -44,7 +43,6 @@ const UserPage = () => {
                                 dataSource={[
                                     { label: 'Email', value: userData.email, icon: <MailOutlined /> },
                                     { label: 'Role', value: userData.role, icon: <SettingOutlined /> },
-                                    { label: 'Last Login', value: userData.lastLogin, icon: <KeyOutlined /> },
                                 ]}
                                 renderItem={item => (
                                     <List.Item style={{ padding: '8px 0', justifyContent: 'space-between' }}>

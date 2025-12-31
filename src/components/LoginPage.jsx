@@ -80,11 +80,7 @@ const LoginPage = ({ onLoginSuccess }) => {
                                                 <Checkbox>Remember my login credentials</Checkbox>
                                             </Form.Item>
                                         </Col>
-                                        <Col>
-                                            <a href="" onClick={(e) => e.preventDefault()}>
-                                                Forgot password?
-                                            </a>
-                                        </Col>
+                                        
                                     </Row>
                                 </Form.Item>
                                 <Form.Item>

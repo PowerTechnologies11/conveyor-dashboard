@@ -1,8 +1,8 @@
-// src/components/pages/ConveyorSummaryPage.jsx 
+// src/components/pages/ConveyorSummaryPage.jsx
 import React from 'react';
-import { Card, Typography, Space, Table, Tag, Button, theme } from 'antd';
-import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Line } from 'recharts';
-import { rollerList, frameSummaryData, getRollerHealth } from '../../data/dummyData'; 
+import { Card, Typography, Space, Table, Tag, Button, Tabs } from 'antd';
+import { rollerList, getRollerHealth } from '../../data/dummyData'; 
+import { ThunderboltOutlined, DashboardOutlined, WifiOutlined, ShakeOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -13,77 +13,53 @@ const mapHealthStatus = (status) => {
 };
 
 const ConveyorSummaryPage = ({ setActiveKey, setSelectedRoller }) => {
-    const { token: { colorInfo } } = theme.useToken();
     
-    const columns = [
-        { title: 'Site', dataIndex: 'site', key: 'site' },
-        { title: 'Conveyor', dataIndex: 'conveyor', key: 'conveyor' },
-        { title: 'Roller Name', dataIndex: 'rollerName', key: 'rollerName' },
-        { title: 'Sensor ID', dataIndex: 'sensorId', key: 'sensorId' },
-        { title: 'Runtime (Days)', dataIndex: 'runtimeDays', key: 'runtimeDays' },
-        { 
-            title: 'Status', 
-            dataIndex: 'health', 
-            key: 'health',
-            render: (health) => {
-                const displayStatus = mapHealthStatus(health.status);
-                const statusLabel = health.status === 'OFFLINE' ? 'Offline' : displayStatus;
-                
-                return (
-                    <Tag color={health.color} key={health.status}>
-                        {statusLabel}
-                    </Tag>
-                );
-            }
-        },
-        { 
-            title: 'Temp (°C)', 
-            dataIndex: 'health',
-            key: 'temp',
-            render: (health) => (health.temp === null ? '-' : `${health.temp}°C`)
-        },
-        { 
-            title: 'RPM', 
-            dataIndex: 'health', 
-            key: 'rpm',
-            render: (health) => (health.rpm === null ? '-' : health.rpm)
-        },
-        { 
-            title: '', 
-            key: 'action', 
-            render: (_, record) => (
-                <Button 
-                    type="primary" 
-                    size="small"
-                    disabled={record.isOnline === false}
-                    onClick={() => { 
-                        setSelectedRoller(record);
-                        setActiveKey('detailedRoller');
-                    }}
-                >
-                    View
-                </Button>
-            ),
-        },
+    const dataWithHealth = rollerList.map(r => ({ ...r, health: getRollerHealth(r) }));
+    const vibrationSensors = dataWithHealth.filter(r => r.type === 'VIBRATION');
+    const rpmSensors = dataWithHealth.filter(r => r.type === 'RPM');
+
+    const renderStatus = (_, record) => (
+        <Tag color={record.health.color}>{record.isOnline ? mapHealthStatus(record.health.status) : 'Offline'}</Tag>
+    );
+    const renderAction = (_, record) => (
+        <Button 
+            type="primary" size="small" disabled={!record.isOnline}
+            
+            onClick={() => { setSelectedRoller(record); setActiveKey('detailedRoller'); }}
+        >
+            View Details
+        </Button>
+    );
+
+    const vibrationColumns = [
+        { title: 'ID', dataIndex: 'sensorId', key: 'id', width: 100, fixed: 'left' },
+        { title: 'Name', dataIndex: 'rollerName', key: 'name' },
+        { title: 'Status', key: 'status', render: renderStatus, width: 100 },
+        { title: 'Temp', dataIndex: 'temp', key: 'temp', width: 100, render: (v, r) => r.isOnline ? `${v}°C` : '-' },
+        { title: 'Voltage', dataIndex: 'voltage', key: 'voltage', width: 100, render: (v, r) => r.isOnline ? `${v}V` : '-' },
+        { title: 'Action', key: 'action', fixed: 'right', width: 120, render: renderAction },
     ];
 
-    const rollersWithHealth = rollerList.map(r => ({ ...r, health: getRollerHealth(r) }));
+    const rpmColumns = [
+        { title: 'ID', dataIndex: 'sensorId', key: 'id', width: 100, fixed: 'left' },
+        { title: 'Name', dataIndex: 'rollerName', key: 'name' },
+        { title: 'Status', key: 'status', render: renderStatus, width: 100 },
+        { title: 'Temp', dataIndex: 'temp', key: 'temp', width: 100, render: (v, r) => r.isOnline ? `${v}°C` : '-' },
+        { title: 'Speed', dataIndex: 'rpm', key: 'rpm', width: 120, render: (v, r) => r.isOnline ? `${v} RPM` : '-' },
+        { title: 'Action', key: 'action', fixed: 'right', width: 120, render: renderAction },
+    ];
+
+    const items = [
+        { key: '1', label: <span><ShakeOutlined/> Vibration ({vibrationSensors.length})</span>, children: <Table columns={vibrationColumns} dataSource={vibrationSensors} rowKey="id" /> },
+        { key: '2', label: <span><DashboardOutlined /> RPM ({rpmSensors.length})</span>, children: <Table columns={rpmColumns} dataSource={rpmSensors} rowKey="id" /> },
+    ];
 
     return (
         <Space direction="vertical" size="large" style={{ display: 'flex' }}>
-            <Title level={3}>Sensor Status & Data</Title>
-            
-            <Title level={5}>All Sensor Real-time Data & Health Status</Title>
-            <Card bodyStyle={{ padding: 0 }}>
-                <Table 
-                    columns={columns} 
-                    dataSource={rollersWithHealth} 
-                    pagination={false} 
-                    size="middle" 
-                    scroll={{ x: 'max-content' }}
-                />
+            <Title level={3}>Sensor Status Overview</Title>
+            <Card bodyStyle={{ padding: '10px 24px' }}>
+                <Tabs defaultActiveKey="1" items={items} size="large" />
             </Card>
-
         </Space>
     );
 };
