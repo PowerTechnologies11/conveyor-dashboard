@@ -51,7 +51,7 @@ const ConveyorSummaryPage = ({ setActiveKey, setSelectedRoller }) => {
 
     const items = [
         { key: '1', label: <span><ShakeOutlined/> Vibration ({vibrationSensors.length})</span>, children: <Table columns={vibrationColumns} dataSource={vibrationSensors} rowKey="id" /> },
-        { key: '2', label: <span><DashboardOutlined /> RPM ({rpmSensors.length})</span>, children: <Table columns={rpmColumns} dataSource={rpmSensors} rowKey="id" /> },
+        { key: '2', label: <span><DashboardOutlined /> Temperature & RPM ({rpmSensors.length})</span>, children: <Table columns={rpmColumns} dataSource={rpmSensors} rowKey="id" /> },
     ];
 
     return (

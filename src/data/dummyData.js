@@ -44,7 +44,7 @@ const generateRawRollers = () => {
         let baseData = {
             id: sensorId,
             type: isVibration ? 'VIBRATION' : 'RPM',
-            title: isVibration ? `Vibration Sensor #${sensorId}` : `RPM Sensor #${sensorId}`,
+            title: isVibration ? `PTSPS104 #${sensorId}` : `PTSPS120 #${sensorId}`,
             site: 'Main Site',
             conveyor: i <= 10 ? 'Conveyor X' : 'Conveyor Y',
             isOnline: true,
