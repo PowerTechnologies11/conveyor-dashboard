@@ -6,8 +6,7 @@ import { rollerList, getRollerHealth } from '../data/dummyData';
 
 const { Text } = Typography;
 
-// 注意：如果图片比例改变，可能需要微调一下这里的坐标
-// 但改用 img 标签后，这就兼容所有屏幕尺寸了
+
 const ROLLER_POSITIONS_MAP = {
     '100001': { top: '68%', left: '17.5%' }, 
     '100002': { top: '65%', left: '23.5%' }, 
@@ -29,6 +28,7 @@ const ROLLER_POSITIONS_MAP = {
     '100018': { top: '41.5%', left: '73.5%' },
     '100019': { top: '38.5%', left: '79%' },
     '100020': { top: '35%', left: '83%' }, 
+    '100021': { top: '77.5%', left: '7%' },
 };
 
 const mapHealthStatus = (status) => {

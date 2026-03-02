@@ -33,14 +33,18 @@ const createMetric = (min, max) => {
     return { current, history };
 };
 
-
 const generateRawRollers = () => {
     const rollers = [];
-    for (let i = 1; i <= 20; i++) {
+    
+    // 循环 21 次，包含新增的 100021
+    for (let i = 1; i <= 21; i++) {
         const idSuffix = i < 10 ? `0${i}` : `${i}`;
         const sensorId = `1000${idSuffix}`;
-        const isVibration = i % 2 !== 0; 
         
+        // 只有 100021 和 100012 是振动传感器
+        const isVibration = sensorId === '100021' || sensorId === '100012'; 
+        
+        // 基础安全数据 (默认都是 NORMAL)
         let baseData = {
             id: sensorId,
             type: isVibration ? 'VIBRATION' : 'RPM',
@@ -63,15 +67,31 @@ const generateRawRollers = () => {
             };
         }
 
-        if (sensorId === '100001') { 
+        // ==========================================
+        // 状态分配逻辑开始 (覆盖默认的安全数据)
+        // ==========================================
+
+        // 1. Vibration 报警测试
+        if (sensorId === '100021') { 
+            // 注入高位移，触发 DANGER (Alarm)
             baseData.data.displacement.z = createMetric(110, 130); 
         }
-        if (sensorId === '100005') { 
-            baseData.voltage = createMetric(2.8, 3.0); 
+        // 注意：100012 什么都不用加，它会保持默认生成的 NORMAL 状态
+
+        // 2. RPM & Temp 报警/警告/离线测试
+        if (sensorId === '100001') { 
+            // 注入高温 (65-75度，阈值是60)，触发 DANGER (Alarm)
+            baseData.temperature = createMetric(65, 75); 
         }
-        if (sensorId === '100012') { 
+        if (sensorId === '100005') { 
+            // 注入低转速 (80-95，阈值是100)，触发 WARNING (Pre-alarm)
+            baseData.rpm = createMetric(80, 95); 
+        }
+        if (sensorId === '100010') { 
+            // 设为断网，触发 OFFLINE
             baseData.isOnline = false; 
         }
+        // 其余的 RPM 传感器将保持默认生成的 NORMAL 状态
 
         rollers.push(baseData);
     }
